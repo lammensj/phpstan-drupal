@@ -78,13 +78,12 @@ class Bootstrap
             throw new \InvalidArgumentException('Cannot determine the realpath of the autoloader.');
         }
         $project_root = dirname($realpath, 2);
-        if (is_dir($project_root . '/core')) {
-            $this->drupalRoot = $project_root;
-        }
-        foreach (['web', 'docroot'] as $possible_docroot) {
-            if (is_dir("$project_root/$possible_docroot/core")) {
-                $this->drupalRoot = "$project_root/$possible_docroot";
-            }
+        if (preg_match('/(?\'directory\'.*(web|docroot)).+/', end($GLOBALS['argv']), $matches)) {
+            $project_root .= '/' . $matches['directory'];
+
+          if (is_dir(sprintf('%s/core', $project_root))) {
+              $this->drupalRoot = $project_root;
+          }
         }
         if ($this->drupalRoot === null) {
             throw new \InvalidArgumentException('Unable to determine the Drupal root');
