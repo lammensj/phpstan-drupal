@@ -50,7 +50,7 @@ class Bootstrap
     private $themes = [];
 
     /**
-     * @var \PHPStan\Drupal\ExtensionDiscovery
+     * @var ?\PHPStan\Drupal\ExtensionDiscovery
      */
     private $extensionDiscovery;
 
@@ -90,11 +90,12 @@ class Bootstrap
         if (!$this->autoloader instanceof ClassLoader) {
             throw new \InvalidArgumentException('Unable to determine the Composer class loader for Drupal');
         }
+        $this->drupalRoot = $drupalRoot;
 
         $this->extensionDiscovery = new ExtensionDiscovery($this->drupalRoot);
         $this->extensionDiscovery->setProfileDirectories([]);
         $profiles = $this->extensionDiscovery->scan('profile');
-        $profile_directories = array_map(function ($profile) {
+        $profile_directories = array_map(function (\PHPStan\Drupal\Extension $profile) : string {
             return $profile->getPath();
         }, $profiles);
         $this->extensionDiscovery->setProfileDirectories($profile_directories);
