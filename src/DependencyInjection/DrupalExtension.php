@@ -22,11 +22,6 @@ class DrupalExtension extends CompilerExtension
     /**
      * @var string
      */
-    private $autoloaderPath;
-
-    /**
-     * @var string
-     */
     private $drupalRoot;
 
     /**
@@ -56,21 +51,23 @@ class DrupalExtension extends CompilerExtension
     public function loadConfiguration(): void
     {
 
-        $this->autoloaderPath = $GLOBALS['autoloaderInWorkingDirectory'];
-        $realpath = realpath($this->autoloaderPath);
+        $realpath = realpath($GLOBALS['autoloaderInWorkingDirectory']);
         if ($realpath === false) {
             throw new \InvalidArgumentException('Cannot determine the realpath of the autoloader.');
         }
         $project_root = dirname($realpath, 2);
-        if (preg_match('/(?\'directory\'.*(web|docroot)).+/', end($GLOBALS['argv']), $matches)) {
-          $project_root .= '/' . $matches['directory'];
+        if (preg_match('/^(?\'directory\'.*?(?\'root\'web|docroot|$))/', end($GLOBALS['argv']), $matches)) {
+            $project_root .= '/' . $matches['directory'];
 
-          if (is_dir(sprintf('%s/core', $project_root))) {
+            if (empty($matches['root'])) {
+                $project_root .= '/web';
+            }
+
+            if (!is_dir(sprintf('%s/core', $project_root))) {
+                throw new \InvalidArgumentException('Unable to determine the Drupal root');
+            }
+
             $this->drupalRoot = $project_root;
-          }
-        }
-        if ($this->drupalRoot === null) {
-            throw new \InvalidArgumentException('Unable to determine the Drupal root');
         }
 
         $builder = $this->getContainerBuilder();

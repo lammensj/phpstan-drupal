@@ -16,11 +16,6 @@ class Bootstrap
     ];
 
     /**
-     * @var string
-     */
-    private $autoloaderPath;
-
-    /**
      * @var \Composer\Autoload\ClassLoader
      */
     private $autoloader;
@@ -67,26 +62,29 @@ class Bootstrap
     public function register(): void
     {
 
-        $this->autoloaderPath = $GLOBALS['autoloaderInWorkingDirectory'];
-        /** @noinspection PhpIncludeInspection */
-        $this->autoloader = require $this->autoloaderPath;
-        if (!$this->autoloader instanceof ClassLoader) {
-            throw new \InvalidArgumentException('Unable to determine the Composer class loader for Drupal');
-        }
-        $realpath = realpath($this->autoloaderPath);
+        $realpath = realpath($GLOBALS['autoloaderInWorkingDirectory']);
         if ($realpath === false) {
             throw new \InvalidArgumentException('Cannot determine the realpath of the autoloader.');
         }
+
         $project_root = dirname($realpath, 2);
-        if (preg_match('/(?\'directory\'.*(web|docroot)).+/', end($GLOBALS['argv']), $matches)) {
+        if (preg_match('/^(?\'directory\'.*?(?\'root\'web|docroot|$))/', end($GLOBALS['argv']), $matches)) {
             $project_root .= '/' . $matches['directory'];
 
-          if (is_dir(sprintf('%s/core', $project_root))) {
-              $this->drupalRoot = $project_root;
-          }
-        }
-        if ($this->drupalRoot === null) {
-            throw new \InvalidArgumentException('Unable to determine the Drupal root');
+            if (empty($matches['root'])) {
+                $project_root .= '/web';
+            }
+
+            if (!is_dir(sprintf('%s/core', $project_root))) {
+                throw new \InvalidArgumentException('Unable to determine the Drupal root');
+            }
+
+            $this->drupalRoot = $project_root;
+            /** @noinspection PhpIncludeInspection */
+            $this->autoloader = require sprintf('%s/autoload.php', $project_root);
+            if (!$this->autoloader instanceof ClassLoader) {
+                throw new \InvalidArgumentException('Unable to determine the Composer class loader for Drupal');
+            }
         }
 
         $this->extensionDiscovery = new ExtensionDiscovery($this->drupalRoot);
