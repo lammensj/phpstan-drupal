@@ -68,23 +68,27 @@ class Bootstrap
         }
 
         $project_root = dirname($realpath, 2);
-        if (preg_match('/^(?\'directory\'.*?(?\'root\'web|docroot|$))/', end($GLOBALS['argv']), $matches)) {
-            $project_root .= '/' . $matches['directory'];
 
-            if (empty($matches['root'])) {
-                $project_root .= '/web';
-            }
+        $possible_roots = ['app', 'docroot', 'web'];
+        $regex = sprintf('/^(?\'directory\'.*?(?\'root\'%s|$))/', implode('|', $possible_roots));
+        if (preg_match($regex, end($GLOBALS['argv']), $matches)) {
+            $this->drupalRoot = sprintf('%s/%s', $project_root, $matches['directory']);
 
-            if (!is_dir(sprintf('%s/core', $project_root))) {
-                throw new \InvalidArgumentException('Unable to determine the Drupal root');
+            if (!is_dir(sprintf('%s/core/lib', $this->drupalRoot))) {
+                $roots = array_filter($possible_roots, function ($root) {
+                    return is_dir(sprintf('%s/%s/core/lib', $this->drupalRoot, $root));
+                });
+                if (count($roots) !== 1) {
+                    throw new \InvalidArgumentException('Unable to determine the Drupal root');
+                }
+                $this->drupalRoot = sprintf('%s/%s', $this->drupalRoot, reset($roots));
             }
+        }
 
-            $this->drupalRoot = $project_root;
-            /** @noinspection PhpIncludeInspection */
-            $this->autoloader = require sprintf('%s/autoload.php', $project_root);
-            if (!$this->autoloader instanceof ClassLoader) {
-                throw new \InvalidArgumentException('Unable to determine the Composer class loader for Drupal');
-            }
+        /** @noinspection PhpIncludeInspection */
+        $this->autoloader = require sprintf('%s/autoload.php', $this->drupalRoot);
+        if (!$this->autoloader instanceof ClassLoader) {
+            throw new \InvalidArgumentException('Unable to determine the Composer class loader for Drupal');
         }
 
         $this->extensionDiscovery = new ExtensionDiscovery($this->drupalRoot);

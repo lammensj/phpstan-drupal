@@ -56,18 +56,21 @@ class DrupalExtension extends CompilerExtension
             throw new \InvalidArgumentException('Cannot determine the realpath of the autoloader.');
         }
         $project_root = dirname($realpath, 2);
-        if (preg_match('/^(?\'directory\'.*?(?\'root\'web|docroot|$))/', end($GLOBALS['argv']), $matches)) {
-            $project_root .= '/' . $matches['directory'];
+        $possible_roots = ['app', 'docroot', 'web'];
 
-            if (empty($matches['root'])) {
-                $project_root .= '/web';
+        $regex = sprintf('/^(?\'directory\'.*?(?\'root\'%s|$))/', implode('|', $possible_roots));
+        if (preg_match($regex, end($GLOBALS['argv']), $matches)) {
+            $this->drupalRoot = sprintf('%s/%s', $project_root, $matches['directory']);
+
+            if (!is_dir(sprintf('%s/core/lib', $this->drupalRoot))) {
+                $roots = array_filter($possible_roots, function ($root) {
+                    return is_dir(sprintf('%s/%s/core/lib', $this->drupalRoot, $root));
+                });
+                if (count($roots) !== 1) {
+                    throw new \InvalidArgumentException('Unable to determine the Drupal root');
+                }
+                $this->drupalRoot = sprintf('%s/%s', $this->drupalRoot, reset($roots));
             }
-
-            if (!is_dir(sprintf('%s/core', $project_root))) {
-                throw new \InvalidArgumentException('Unable to determine the Drupal root');
-            }
-
-            $this->drupalRoot = $project_root;
         }
 
         $builder = $this->getContainerBuilder();
